@@ -8,6 +8,7 @@ interface SidebarProps {
   activeWorkspace?: Workspace
   sessions: SessionSummary[]
   activeSessionId?: string
+  streamingMap?: Record<string, boolean>
   runtimeStatus: PiRuntimeStatus | null
   onOpenFolderDialog: () => void
   onSelectWorkspace: (ws: Workspace) => void
@@ -23,6 +24,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeWorkspace,
   sessions,
   activeSessionId,
+  streamingMap,
   runtimeStatus,
   onOpenFolderDialog,
   onSelectWorkspace,
@@ -78,6 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 isActive={activeWorkspace?.path === ws.path}
                 sessions={wsSessions}
                 activeSessionId={activeSessionId}
+                streamingMap={streamingMap}
                 onSelectWorkspace={onSelectWorkspace}
                 onSelectSession={onSelectSession}
                 onNewSession={onNewSession}

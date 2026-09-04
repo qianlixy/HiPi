@@ -17,13 +17,21 @@ export const App: React.FC = () => {
   const [activeWorkspace, setActiveWorkspace] = useState<Workspace | undefined>(undefined)
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>(undefined)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [isStreaming, setIsStreaming] = useState(false)
+
+  // Pooled State
+  const [messagesMap, setMessagesMap] = useState<Record<string, ChatMessage[]>>({})
+  const [streamingMap, setStreamingMap] = useState<Record<string, boolean>>({})
+  const [statsMap, setStatsMap] = useState<Record<string, { tokens?: number; cost?: number }>>({})
+
   const [runtimeStatus, setRuntimeStatus] = useState<PiRuntimeStatus | null>(null)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [currentModel, setCurrentModel] = useState<{ provider: string; modelId: string } | undefined>(undefined)
   const [thinkingLevel, setThinkingLevel] = useState<string>('off')
-  const [sessionStats, setSessionStats] = useState<{ tokens?: number; cost?: number } | undefined>(undefined)
+
+  const currentKey = activeSessionId || (activeWorkspace ? `${activeWorkspace.path}::__default__` : '')
+  const currentMessages = (currentKey && messagesMap[currentKey]) || []
+  const isStreaming = !!(currentKey && streamingMap[currentKey])
+  const sessionStats = currentKey ? statsMap[currentKey] : undefined
 
   // Initialize
   useEffect(() => {
@@ -67,12 +75,17 @@ export const App: React.FC = () => {
     } catch { }
   }
 
-  const refreshStats = (wsPath: string) => {
+  const refreshStats = (wsPath: string, sId?: string) => {
+    const key = sId || `${wsPath}::__default__`
     window.hipiApi.pi
-      .getSessionStats(wsPath)
+      .getSessionStats({ workspacePath: wsPath, sessionId: sId })
       .then((data) => {
         if (data && data.tokens) {
-          setSessionStats({ tokens: data.tokens.total, cost: data.cost })
+          setStatsMap((prev) => ({
+            ...prev,
+            [key]: { tokens: data.tokens.total, cost: data.cost },
+            ...(sId ? { [sId]: { tokens: data.tokens.total, cost: data.cost } } : {})
+          }))
         }
       })
       .catch(() => { })
@@ -148,35 +161,81 @@ export const App: React.FC = () => {
     return messages
   }
 
-  const loadWorkspaceMessages = async (wsPath: string) => {
+  const loadWorkspaceMessages = async (wsPath: string, sId?: string) => {
+    const key = sId || `${wsPath}::__default__`
     try {
-      const res = await window.hipiApi.pi.getMessages(wsPath)
+      const res = await window.hipiApi.pi.getMessages({ workspacePath: wsPath, sessionId: sId })
       if (res && Array.isArray(res.messages)) {
-        setMessages(parsePiMessages(res.messages))
-      } else {
-        setMessages([])
+        const parsed = parsePiMessages(res.messages)
+        setMessagesMap((prev) => ({
+          ...prev,
+          [key]: parsed,
+          ...(sId ? { [sId]: parsed } : {})
+        }))
       }
     } catch {
-      setMessages([])
+      // ignore
     }
   }
 
-  // Subscribe to PI RPC streaming events
+  const updateSessionMessages = (
+    key: string,
+    updater: (prevList: ChatMessage[]) => ChatMessage[]
+  ) => {
+    setMessagesMap((prevMap) => {
+      const current = prevMap[key] || []
+      const next = updater(current)
+      return {
+        ...prevMap,
+        [key]: next
+      }
+    })
+  }
+
+  // Subscribe to PI streaming events
   useEffect(() => {
-    const unsubscribe = window.hipiApi.pi.onEvent(({ workspacePath, event }) => {
-      if (!activeWorkspace || activeWorkspace.path !== workspacePath) return
+    const unsubscribe = window.hipiApi.pi.onEvent(({ workspacePath, sessionId, event }) => {
+      // Auto-reconcile default fallback key into concrete sessionId if needed
+      if (sessionId && activeWorkspace?.path === workspacePath && !activeSessionId) {
+        setActiveSessionId(sessionId)
+        setMessagesMap((prev) => {
+          const defaultKey = `${workspacePath}::__default__`
+          if (prev[defaultKey] && prev[defaultKey].length > 0 && !prev[sessionId]) {
+            return {
+              ...prev,
+              [sessionId]: prev[defaultKey],
+              [defaultKey]: []
+            }
+          }
+          return prev
+        })
+      }
+
+      const targetKey =
+        sessionId ||
+        (activeWorkspace && activeWorkspace.path === workspacePath && activeSessionId
+          ? activeSessionId
+          : `${workspacePath}::__default__`)
 
       const evType = event.type
 
       if (evType === 'turn_start' || evType === 'agent_start') {
-        setIsStreaming(true)
+        setStreamingMap((prev) => ({
+          ...prev,
+          [targetKey]: true,
+          ...(sessionId ? { [sessionId]: true } : {})
+        }))
       } else if (evType === 'turn_end' || evType === 'agent_end' || evType === 'agent_settled') {
-        setIsStreaming(false)
-        refreshStats(workspacePath)
+        setStreamingMap((prev) => ({
+          ...prev,
+          [targetKey]: false,
+          ...(sessionId ? { [sessionId]: false } : {})
+        }))
+        refreshStats(workspacePath, sessionId)
         loadAllSessions()
 
         // If turn ended with an empty assistant message, show warning
-        setMessages((prev) => {
+        updateSessionMessages(targetKey, (prev) => {
           if (prev.length === 0) return prev
           const last = prev[prev.length - 1]
           if (
@@ -198,7 +257,7 @@ export const App: React.FC = () => {
       } else if (evType === 'message_start') {
         const msg = event.message
         if (msg && msg.role === 'assistant') {
-          setMessages((prev) => [
+          updateSessionMessages(targetKey, (prev) => [
             ...prev,
             {
               id: msg.id || `ast-${Date.now()}`,
@@ -216,7 +275,7 @@ export const App: React.FC = () => {
           event.delta ||
           (event.assistantMessageEvent?.type === 'text_delta' ? event.assistantMessageEvent.delta : '') ||
           ''
-        setMessages((prev) => {
+        updateSessionMessages(targetKey, (prev) => {
           if (prev.length === 0) return prev
           const last = prev[prev.length - 1]
           if (last.role !== 'assistant') return prev
@@ -231,7 +290,7 @@ export const App: React.FC = () => {
         })
       } else if (evType === 'message_end') {
         const msg = event.message
-        setMessages((prev) => {
+        updateSessionMessages(targetKey, (prev) => {
           if (prev.length === 0) return prev
           const last = prev[prev.length - 1]
           let content = last.content
@@ -252,7 +311,7 @@ export const App: React.FC = () => {
         const toolName = event.toolName || 'tool'
         const args = event.args || {}
 
-        setMessages((prev) => {
+        updateSessionMessages(targetKey, (prev) => {
           if (prev.length === 0) return prev
           const last = prev[prev.length - 1]
           if (last.role !== 'assistant') return prev
@@ -278,7 +337,7 @@ export const App: React.FC = () => {
         const toolCallId = event.toolCallId
         const output = event.output || event.text || ''
 
-        setMessages((prev) => {
+        updateSessionMessages(targetKey, (prev) => {
           if (prev.length === 0) return prev
           const last = prev[prev.length - 1]
           if (!last.toolExecutions) return prev
@@ -299,7 +358,7 @@ export const App: React.FC = () => {
         const isError = event.isError
         const result = event.result
 
-        setMessages((prev) => {
+        updateSessionMessages(targetKey, (prev) => {
           if (prev.length === 0) return prev
           const last = prev[prev.length - 1]
           if (!last.toolExecutions) return prev
@@ -321,14 +380,18 @@ export const App: React.FC = () => {
           ]
         })
       } else if (evType === 'model_changed') {
-        if (event.model) {
+        if (
+          event.model &&
+          activeWorkspace?.path === workspacePath &&
+          (!sessionId || sessionId === activeSessionId)
+        ) {
           setCurrentModel({ provider: event.model.provider, modelId: event.model.id })
         }
       }
     })
 
     return () => unsubscribe()
-  }, [activeWorkspace])
+  }, [activeWorkspace, activeSessionId])
 
   // Actions
   const handleOpenFolderDialog = async () => {
@@ -350,16 +413,19 @@ export const App: React.FC = () => {
     }
     setActiveSessionId(session.id)
 
-    // 1. Instantly load complete historical messages from session file
-    try {
-      const historical = await window.hipiApi.session.getMessages(session.path)
-      if (historical && Array.isArray(historical) && historical.length > 0) {
-        setMessages(historical)
-      } else {
-        setMessages([])
+    // 1. Instantly load complete historical messages from session file if not already in memory
+    if (!messagesMap[session.id] || messagesMap[session.id].length === 0) {
+      try {
+        const historical = await window.hipiApi.session.getMessages(session.path)
+        if (historical && Array.isArray(historical) && historical.length > 0) {
+          setMessagesMap((prev) => ({
+            ...prev,
+            [session.id]: historical
+          }))
+        }
+      } catch (err) {
+        console.warn('Failed to parse session file directly:', err)
       }
-    } catch (err) {
-      console.warn('Failed to parse session file directly:', err)
     }
 
     // 2. Synchronize PI background process session
@@ -368,12 +434,15 @@ export const App: React.FC = () => {
         workspacePath: ws.path,
         sessionPath: session.path
       })
-      // Sync model and stats
-      const state = await window.hipiApi.pi.getState(ws.path)
+      // Sync model, thinking level and stats
+      const state = await window.hipiApi.pi.getState({ workspacePath: ws.path, sessionId: session.id })
       if (state && state.model) {
         setCurrentModel({ provider: state.model.provider, modelId: state.model.id })
       }
-      refreshStats(ws.path)
+      if (state && state.thinkingLevel) {
+        setThinkingLevel(state.thinkingLevel)
+      }
+      refreshStats(ws.path, session.id)
     } catch (e) {
       console.error('Failed to switch PI session:', e)
     }
@@ -383,11 +452,17 @@ export const App: React.FC = () => {
     const targetWs = ws || activeWorkspace
     if (!targetWs) return
     try {
-      await window.hipiApi.pi.newSession(targetWs.path)
-      setMessages([])
-      setActiveSessionId(undefined)
+      const res = await window.hipiApi.pi.newSession(targetWs.path)
+      const newSessionId = res?.sessionId
+      if (targetWs.path === activeWorkspace?.path) {
+        setActiveSessionId(newSessionId)
+        if (newSessionId) {
+          setMessagesMap((prev) => ({ ...prev, [newSessionId]: [] }))
+          setStreamingMap((prev) => ({ ...prev, [newSessionId]: false }))
+        }
+      }
       loadAllSessions()
-      refreshStats(targetWs.path)
+      refreshStats(targetWs.path, newSessionId)
     } catch (e) {
       console.error('Failed to create new session:', e)
     }
@@ -395,8 +470,17 @@ export const App: React.FC = () => {
 
   const handleDeleteSession = async (session: SessionSummary) => {
     await window.hipiApi.session.delete(session.path)
+    setMessagesMap((prev) => {
+      const next = { ...prev }
+      delete next[session.id]
+      return next
+    })
+    setStreamingMap((prev) => {
+      const next = { ...prev }
+      delete next[session.id]
+      return next
+    })
     if (activeSessionId === session.id) {
-      setMessages([])
       setActiveSessionId(undefined)
     }
     loadAllSessions()
@@ -410,7 +494,7 @@ export const App: React.FC = () => {
         selectWorkspace(updated[0])
       } else {
         setActiveWorkspace(undefined)
-        setMessages([])
+        setActiveSessionId(undefined)
       }
     }
     loadAllSessions()
@@ -419,6 +503,9 @@ export const App: React.FC = () => {
   const handleSendPrompt = async (messageText: string) => {
     if (!activeWorkspace || isStreaming) return
 
+    const sKey = currentKey
+    const targetSessionId = activeSessionId
+
     // Append user message immediately
     const userMsg: ChatMessage = {
       id: `usr-${Date.now()}`,
@@ -426,34 +513,53 @@ export const App: React.FC = () => {
       content: messageText,
       timestamp: Date.now()
     }
-    setMessages((prev) => [...prev, userMsg])
-    setIsStreaming(true)
+
+    setMessagesMap((prev) => ({
+      ...prev,
+      [sKey]: [...(prev[sKey] || []), userMsg]
+    }))
+    setStreamingMap((prev) => ({
+      ...prev,
+      [sKey]: true
+    }))
 
     try {
       await window.hipiApi.pi.sendPrompt({
         workspacePath: activeWorkspace.path,
+        sessionId: targetSessionId,
         message: messageText
       })
     } catch (err: any) {
       console.error('Prompt send error:', err)
-      setIsStreaming(false)
-      // Append assistant error message
-      setMessages((prev) => [
+      setStreamingMap((prev) => ({
         ...prev,
-        {
-          id: `err-${Date.now()}`,
-          role: 'assistant',
-          content: `⚠️ 发送失败: ${err.message || String(err)}。请在设置中检查 API Key 是否已配置。`,
-          timestamp: Date.now()
-        }
-      ])
+        [sKey]: false
+      }))
+      // Append assistant error message
+      setMessagesMap((prev) => ({
+        ...prev,
+        [sKey]: [
+          ...(prev[sKey] || []),
+          {
+            id: `err-${Date.now()}`,
+            role: 'assistant',
+            content: `⚠️ 发送失败: ${err.message || String(err)}。请在设置中检查 API Key 是否已配置。`,
+            timestamp: Date.now()
+          }
+        ]
+      }))
     }
   }
 
   const handleAbort = async () => {
     if (!activeWorkspace) return
-    await window.hipiApi.pi.abort(activeWorkspace.path)
-    setIsStreaming(false)
+    await window.hipiApi.pi.abort({
+      workspacePath: activeWorkspace.path,
+      sessionId: activeSessionId
+    })
+    if (currentKey) {
+      setStreamingMap((prev) => ({ ...prev, [currentKey]: false }))
+    }
   }
 
   const handleModelChange = async (provider: string, modelId: string) => {
@@ -461,6 +567,7 @@ export const App: React.FC = () => {
     try {
       await window.hipiApi.pi.setModel({
         workspacePath: activeWorkspace.path,
+        sessionId: activeSessionId,
         provider,
         modelId
       })
@@ -475,6 +582,7 @@ export const App: React.FC = () => {
     try {
       await window.hipiApi.pi.setThinkingLevel({
         workspacePath: activeWorkspace.path,
+        sessionId: activeSessionId,
         level
       })
       setThinkingLevel(level)
@@ -499,11 +607,16 @@ export const App: React.FC = () => {
       }
       if (state && state.sessionId) {
         setActiveSessionId(state.sessionId)
+        loadWorkspaceMessages(ws.path, state.sessionId)
+        refreshStats(ws.path, state.sessionId)
+      } else {
+        loadWorkspaceMessages(ws.path)
+        refreshStats(ws.path)
       }
-    } catch { }
-
-    loadWorkspaceMessages(ws.path)
-    refreshStats(ws.path)
+    } catch {
+      loadWorkspaceMessages(ws.path)
+      refreshStats(ws.path)
+    }
   }
 
   return (
@@ -514,6 +627,7 @@ export const App: React.FC = () => {
         activeWorkspace={activeWorkspace}
         sessions={sessions}
         activeSessionId={activeSessionId}
+        streamingMap={streamingMap}
         runtimeStatus={runtimeStatus}
         onOpenFolderDialog={handleOpenFolderDialog}
         onSelectWorkspace={selectWorkspace}
@@ -538,7 +652,7 @@ export const App: React.FC = () => {
 
         <ChatArea
           workspace={activeWorkspace}
-          messages={messages}
+          messages={currentMessages}
           isStreaming={isStreaming}
           onSendMessage={handleSendPrompt}
           onAbort={handleAbort}
@@ -550,9 +664,9 @@ export const App: React.FC = () => {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        onSettingsSaved={(newSettings) => {
+        onSettingsSaved={() => {
           if (activeWorkspace) {
-            loadWorkspaceMessages(activeWorkspace.path)
+            loadWorkspaceMessages(activeWorkspace.path, activeSessionId)
           }
         }}
       />

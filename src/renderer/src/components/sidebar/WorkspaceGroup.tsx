@@ -8,6 +8,7 @@ interface WorkspaceGroupProps {
   isActive: boolean
   sessions: SessionSummary[]
   activeSessionId?: string
+  streamingMap?: Record<string, boolean>
   onSelectWorkspace: (ws: Workspace) => void
   onSelectSession: (ws: Workspace, session: SessionSummary) => void
   onNewSession: (ws: Workspace) => void
@@ -20,6 +21,7 @@ export const WorkspaceGroup: React.FC<WorkspaceGroupProps> = ({
   isActive,
   sessions,
   activeSessionId,
+  streamingMap,
   onSelectWorkspace,
   onSelectSession,
   onNewSession,
@@ -27,6 +29,9 @@ export const WorkspaceGroup: React.FC<WorkspaceGroupProps> = ({
   onRemoveWorkspace
 }) => {
   const [isOpen, setIsOpen] = useState(true)
+  const isWorkspaceStreaming =
+    sessions.some((s) => !!streamingMap?.[s.id]) ||
+    !!streamingMap?.[`${workspace.path}::__default__`]
 
   return (
     <div className="mb-2">
@@ -48,7 +53,19 @@ export const WorkspaceGroup: React.FC<WorkspaceGroupProps> = ({
           >
             {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
           </button>
-          <Folder className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+          <div className="relative flex-shrink-0">
+            <Folder className="w-3.5 h-3.5 text-accent" />
+            {isWorkspaceStreaming && (
+              <span
+                data-testid="workspace-streaming-indicator"
+                className="absolute -top-0.5 -right-0.5 flex h-2 w-2"
+                title="后台任务运行中"
+              >
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+              </span>
+            )}
+          </div>
           <span className="truncate">{workspace.name}</span>
         </div>
 
@@ -88,6 +105,7 @@ export const WorkspaceGroup: React.FC<WorkspaceGroupProps> = ({
                 key={s.id}
                 session={s}
                 isActive={activeSessionId === s.id}
+                isStreaming={!!streamingMap?.[s.id]}
                 onSelect={(sess) => onSelectSession(workspace, sess)}
                 onDelete={onDeleteSession}
               />

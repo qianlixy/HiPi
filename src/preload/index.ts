@@ -1,5 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { Workspace, SessionSummary, AppSettings, PiRuntimeStatus, ChatMessage } from '../main/types'
+import {
+  Workspace,
+  SessionSummary,
+  AppSettings,
+  PiRuntimeStatus,
+  ChatMessage,
+  PiEventPayload,
+  PiStderrPayload,
+  PiExitPayload
+} from '../main/types'
 
 const hipiApi = {
   workspace: {
@@ -26,33 +35,43 @@ const hipiApi = {
   pi: {
     sendPrompt: (params: {
       workspacePath: string
+      sessionId?: string
       message: string
       images?: string[]
     }): Promise<any> => ipcRenderer.invoke('pi:send-prompt', params),
 
-    abort: (workspacePath: string): Promise<boolean> =>
-      ipcRenderer.invoke('pi:abort', workspacePath),
+    abort: (params: string | { workspacePath: string; sessionId?: string }): Promise<boolean> =>
+      ipcRenderer.invoke('pi:abort', typeof params === 'string' ? { workspacePath: params } : params),
 
     getAvailableModels: (workspacePath: string): Promise<any> =>
       ipcRenderer.invoke('pi:get-available-models', workspacePath),
 
     setModel: (params: {
       workspacePath: string
+      sessionId?: string
       provider: string
       modelId: string
     }): Promise<any> => ipcRenderer.invoke('pi:set-model', params),
 
-    getAvailableThinkingLevels: (workspacePath: string): Promise<{ levels: string[] }> =>
-      ipcRenderer.invoke('pi:get-available-thinking-levels', workspacePath),
+    getAvailableThinkingLevels: (
+      params: string | { workspacePath: string; sessionId?: string }
+    ): Promise<{ levels: string[] }> =>
+      ipcRenderer.invoke(
+        'pi:get-available-thinking-levels',
+        typeof params === 'string' ? { workspacePath: params } : params
+      ),
 
-    setThinkingLevel: (params: { workspacePath: string; level: string }): Promise<any> =>
-      ipcRenderer.invoke('pi:set-thinking-level', params),
+    setThinkingLevel: (params: {
+      workspacePath: string
+      sessionId?: string
+      level: string
+    }): Promise<any> => ipcRenderer.invoke('pi:set-thinking-level', params),
 
-    getState: (workspacePath: string): Promise<any> =>
-      ipcRenderer.invoke('pi:get-state', workspacePath),
+    getState: (params: string | { workspacePath: string; sessionId?: string }): Promise<any> =>
+      ipcRenderer.invoke('pi:get-state', typeof params === 'string' ? { workspacePath: params } : params),
 
-    getMessages: (workspacePath: string): Promise<any> =>
-      ipcRenderer.invoke('pi:get-messages', workspacePath),
+    getMessages: (params: string | { workspacePath: string; sessionId?: string }): Promise<any> =>
+      ipcRenderer.invoke('pi:get-messages', typeof params === 'string' ? { workspacePath: params } : params),
 
     newSession: (workspacePath: string): Promise<any> =>
       ipcRenderer.invoke('pi:new-session', workspacePath),
@@ -62,8 +81,11 @@ const hipiApi = {
       sessionPath: string
     }): Promise<any> => ipcRenderer.invoke('pi:switch-session', params),
 
-    getSessionStats: (workspacePath: string): Promise<any> =>
-      ipcRenderer.invoke('pi:get-session-stats', workspacePath),
+    getSessionStats: (params: string | { workspacePath: string; sessionId?: string }): Promise<any> =>
+      ipcRenderer.invoke(
+        'pi:get-session-stats',
+        typeof params === 'string' ? { workspacePath: params } : params
+      ),
 
     getRuntimeStatus: (): Promise<PiRuntimeStatus> =>
       ipcRenderer.invoke('pi:runtime-status'),
@@ -71,9 +93,7 @@ const hipiApi = {
     upgradeRuntime: (): Promise<{ success: boolean; version?: string; error?: string }> =>
       ipcRenderer.invoke('pi:runtime-upgrade'),
 
-    onEvent: (
-      callback: (data: { workspacePath: string; event: Record<string, any> }) => void
-    ) => {
+    onEvent: (callback: (data: PiEventPayload) => void) => {
       const handler = (_: any, data: any) => callback(data)
       ipcRenderer.on('pi:event', handler)
       return () => {
@@ -81,7 +101,7 @@ const hipiApi = {
       }
     },
 
-    onStderr: (callback: (data: { workspacePath: string; text: string }) => void) => {
+    onStderr: (callback: (data: PiStderrPayload) => void) => {
       const handler = (_: any, data: any) => callback(data)
       ipcRenderer.on('pi:stderr', handler)
       return () => {
@@ -89,9 +109,7 @@ const hipiApi = {
       }
     },
 
-    onExit: (
-      callback: (data: { workspacePath: string; code: number | null; signal: string | null }) => void
-    ) => {
+    onExit: (callback: (data: PiExitPayload) => void) => {
       const handler = (_: any, data: any) => callback(data)
       ipcRenderer.on('pi:exit', handler)
       return () => {

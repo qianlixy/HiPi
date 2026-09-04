@@ -77,3 +77,23 @@ export interface AppSettings {
   activeWorkspacePath?: string
   activeSessionId?: string
 }
+
+export interface PiEventPayload {
+  workspacePath: string
+  sessionId?: string
+  event: Record<string, any>
+}
+
+export interface PiStderrPayload {
+  workspacePath: string
+  sessionId?: string
+  text: string
+}
+
+export interface PiExitPayload {
+  workspacePath: string
+  sessionId?: string
+  code: number | null
+  signal: string | null
+}
+
