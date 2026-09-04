@@ -13,11 +13,12 @@ export function registerIpcHandlers(
   settingsStore: SettingsStore
 ) {
   // Listen to session manager events and forward to renderer
-  sessionManager.onEvent(({ workspacePath, event }) => {
+  sessionManager.onEvent(({ workspacePath, sessionId, event }) => {
     const win = getMainWindow()
     if (win && !win.isDestroyed()) {
       win.webContents.send('pi:event', {
         workspacePath,
+        sessionId,
         event
       })
     }
@@ -84,6 +85,10 @@ export function registerIpcHandlers(
   })
 
   ipcMain.handle('session:delete', async (_, sessionPath: string) => {
+    const sessionId = path.basename(sessionPath, '.jsonl')
+    for (const ws of settingsStore.getSettings().workspaces) {
+      sessionManager.stopSession(ws.path, sessionId)
+    }
     return sessionScanner.deleteSession(sessionPath)
   })
 
@@ -94,13 +99,23 @@ export function registerIpcHandlers(
   // --- PI SDK Interaction ---
   ipcMain.handle(
     'pi:send-prompt',
-    async (_, { workspacePath, message, images }: { workspacePath: string; message: string; images?: string[] }) => {
-      return await sessionManager.prompt(workspacePath, message, images)
+    async (
+      _,
+      {
+        workspacePath,
+        sessionId,
+        message,
+        images
+      }: { workspacePath: string; sessionId?: string; message: string; images?: string[] }
+    ) => {
+      return await sessionManager.prompt(workspacePath, message, images, sessionId)
     }
   )
 
-  ipcMain.handle('pi:abort', async (_, workspacePath: string) => {
-    return await sessionManager.abort(workspacePath)
+  ipcMain.handle('pi:abort', async (_, args: string | { workspacePath: string; sessionId?: string }) => {
+    const wsPath = typeof args === 'string' ? args : args.workspacePath
+    const sId = typeof args === 'string' ? undefined : args.sessionId
+    return await sessionManager.abort(wsPath, sId)
   })
 
   ipcMain.handle('pi:get-available-models', async (_, workspacePath: string) => {
@@ -109,28 +124,48 @@ export function registerIpcHandlers(
 
   ipcMain.handle(
     'pi:set-model',
-    async (_, { workspacePath, provider, modelId }: { workspacePath: string; provider: string; modelId: string }) => {
-      return await sessionManager.setModel(workspacePath, provider, modelId)
+    async (
+      _,
+      {
+        workspacePath,
+        sessionId,
+        provider,
+        modelId
+      }: { workspacePath: string; sessionId?: string; provider: string; modelId: string }
+    ) => {
+      return await sessionManager.setModel(workspacePath, provider, modelId, sessionId)
     }
   )
 
-  ipcMain.handle('pi:get-available-thinking-levels', async (_, workspacePath: string) => {
-    return await sessionManager.getAvailableThinkingLevels(workspacePath)
-  })
+  ipcMain.handle(
+    'pi:get-available-thinking-levels',
+    async (_, args: string | { workspacePath: string; sessionId?: string }) => {
+      const wsPath = typeof args === 'string' ? args : args.workspacePath
+      const sId = typeof args === 'string' ? undefined : args.sessionId
+      return await sessionManager.getAvailableThinkingLevels(wsPath, sId)
+    }
+  )
 
   ipcMain.handle(
     'pi:set-thinking-level',
-    async (_, { workspacePath, level }: { workspacePath: string; level: string }) => {
-      return await sessionManager.setThinkingLevel(workspacePath, level)
+    async (
+      _,
+      { workspacePath, sessionId, level }: { workspacePath: string; sessionId?: string; level: string }
+    ) => {
+      return await sessionManager.setThinkingLevel(workspacePath, level, sessionId)
     }
   )
 
-  ipcMain.handle('pi:get-state', async (_, workspacePath: string) => {
-    return await sessionManager.getState(workspacePath)
+  ipcMain.handle('pi:get-state', async (_, args: string | { workspacePath: string; sessionId?: string }) => {
+    const wsPath = typeof args === 'string' ? args : args.workspacePath
+    const sId = typeof args === 'string' ? undefined : args.sessionId
+    return await sessionManager.getState(wsPath, sId)
   })
 
-  ipcMain.handle('pi:get-messages', async (_, workspacePath: string) => {
-    return await sessionManager.getMessages(workspacePath)
+  ipcMain.handle('pi:get-messages', async (_, args: string | { workspacePath: string; sessionId?: string }) => {
+    const wsPath = typeof args === 'string' ? args : args.workspacePath
+    const sId = typeof args === 'string' ? undefined : args.sessionId
+    return await sessionManager.getMessages(wsPath, sId)
   })
 
   ipcMain.handle('pi:new-session', async (_, workspacePath: string) => {
@@ -144,9 +179,14 @@ export function registerIpcHandlers(
     }
   )
 
-  ipcMain.handle('pi:get-session-stats', async (_, workspacePath: string) => {
-    return await sessionManager.getSessionStats(workspacePath)
-  })
+  ipcMain.handle(
+    'pi:get-session-stats',
+    async (_, args: string | { workspacePath: string; sessionId?: string }) => {
+      const wsPath = typeof args === 'string' ? args : args.workspacePath
+      const sId = typeof args === 'string' ? undefined : args.sessionId
+      return await sessionManager.getSessionStats(wsPath, sId)
+    }
+  )
 
   // --- PI Runtime Status & Version ---
   ipcMain.handle('pi:runtime-status', async () => {
