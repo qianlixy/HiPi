@@ -198,29 +198,29 @@ git commit -m "feat(renderer): pool chat messages and streaming state per sessio
   - `SessionItem` prop `isStreaming?: boolean`: shows a subtle cyan/green breathing pulsating dot or spinning indicator when true.
   - `WorkspaceGroup` prop `isStreaming?: boolean`: shows an active running badge/dot when any session in the workspace is streaming.
 
-- [ ] **Step 1: Write unit tests for `SessionItem` running indicator**
+- [x] **Step 1: Write unit tests for `SessionItem` running indicator**
 
 Create `src/renderer/src/components/sidebar/__tests__/SessionItem.test.tsx`:
 - Test: renders session item with normal icon when not streaming.
 - Test: renders streaming breathing indicator when `isStreaming` is true.
 
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
 
 Run: `npx vitest run src/renderer/src/components/sidebar/__tests__/SessionItem.test.tsx`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement streaming visual indicator in `SessionItem` and `WorkspaceGroup`**
+- [x] **Step 3: Implement streaming visual indicator in `SessionItem` and `WorkspaceGroup`**
 
 - In `SessionItem.tsx`: add `isStreaming?: boolean` prop. If true, render a breathing indicator (e.g. `<span className="relative flex h-2 w-2 mr-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span></span>` or spinner).
 - In `WorkspaceGroup.tsx`: compute `hasActiveSessionStreaming = sessions.some(s => streamingMap[s.id])`. Render a mini status dot next to the folder icon.
 - Pass `streamingMap` down through `Sidebar.tsx`.
 
-- [ ] **Step 4: Run tests to verify pass**
+- [x] **Step 4: Run tests to verify pass**
 
 Run: `npx vitest run src/renderer/src/components/sidebar/__tests__/SessionItem.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer/src/components/sidebar/ src/renderer/src/App.tsx
