@@ -5,6 +5,7 @@ import { SessionSummary } from '../../types'
 interface SessionItemProps {
   session: SessionSummary
   isActive: boolean
+  isStreaming?: boolean
   onSelect: (session: SessionSummary) => void
   onDelete: (session: SessionSummary) => void
 }
@@ -12,6 +13,7 @@ interface SessionItemProps {
 export const SessionItem: React.FC<SessionItemProps> = ({
   session,
   isActive,
+  isStreaming,
   onSelect,
   onDelete
 }) => {
@@ -38,7 +40,18 @@ export const SessionItem: React.FC<SessionItemProps> = ({
       }`}
     >
       <div className="flex items-center space-x-2 truncate flex-1 min-w-0">
-        <MessageSquare className="w-3.5 h-3.5 flex-shrink-0 opacity-70" />
+        {isStreaming ? (
+          <span
+            data-testid="session-streaming-indicator"
+            className="relative flex h-2.5 w-2.5 flex-shrink-0 mr-0.5"
+            title="会话正在执行中..."
+          >
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
+          </span>
+        ) : (
+          <MessageSquare className="w-3.5 h-3.5 flex-shrink-0 opacity-70" />
+        )}
         <span className="truncate">{session.name || '新会话'}</span>
       </div>
 

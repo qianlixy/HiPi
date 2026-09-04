@@ -604,6 +604,7 @@ export const App: React.FC = () => {
         activeWorkspace={activeWorkspace}
         sessions={sessions}
         activeSessionId={activeSessionId}
+        streamingMap={streamingMap}
         runtimeStatus={runtimeStatus}
         onOpenFolderDialog={handleOpenFolderDialog}
         onSelectWorkspace={selectWorkspace}
