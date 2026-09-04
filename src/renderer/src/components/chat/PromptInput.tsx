@@ -8,6 +8,18 @@ interface PromptInputProps {
   onAbort: () => void
 }
 
+export function shouldSubmitPrompt(e: {
+  key: string
+  shiftKey: boolean
+  keyCode?: number
+  nativeEvent?: { isComposing?: boolean }
+}): boolean {
+  if (e.nativeEvent?.isComposing || e.keyCode === 229) {
+    return false
+  }
+  return e.key === 'Enter' && !e.shiftKey
+}
+
 export const PromptInput: React.FC<PromptInputProps> = ({
   disabled,
   isStreaming,
@@ -25,7 +37,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
   }, [content])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (shouldSubmitPrompt(e)) {
       e.preventDefault()
       handleSubmit()
     }
