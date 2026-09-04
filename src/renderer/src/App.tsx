@@ -195,6 +195,22 @@ export const App: React.FC = () => {
   // Subscribe to PI streaming events
   useEffect(() => {
     const unsubscribe = window.hipiApi.pi.onEvent(({ workspacePath, sessionId, event }) => {
+      // Auto-reconcile default fallback key into concrete sessionId if needed
+      if (sessionId && activeWorkspace?.path === workspacePath && !activeSessionId) {
+        setActiveSessionId(sessionId)
+        setMessagesMap((prev) => {
+          const defaultKey = `${workspacePath}::__default__`
+          if (prev[defaultKey] && prev[defaultKey].length > 0 && !prev[sessionId]) {
+            return {
+              ...prev,
+              [sessionId]: prev[defaultKey],
+              [defaultKey]: []
+            }
+          }
+          return prev
+        })
+      }
+
       const targetKey =
         sessionId ||
         (activeWorkspace && activeWorkspace.path === workspacePath && activeSessionId
@@ -364,7 +380,11 @@ export const App: React.FC = () => {
           ]
         })
       } else if (evType === 'model_changed') {
-        if (event.model && activeWorkspace?.path === workspacePath) {
+        if (
+          event.model &&
+          activeWorkspace?.path === workspacePath &&
+          (!sessionId || sessionId === activeSessionId)
+        ) {
           setCurrentModel({ provider: event.model.provider, modelId: event.model.id })
         }
       }
@@ -414,10 +434,13 @@ export const App: React.FC = () => {
         workspacePath: ws.path,
         sessionPath: session.path
       })
-      // Sync model and stats
+      // Sync model, thinking level and stats
       const state = await window.hipiApi.pi.getState({ workspacePath: ws.path, sessionId: session.id })
       if (state && state.model) {
         setCurrentModel({ provider: state.model.provider, modelId: state.model.id })
+      }
+      if (state && state.thinkingLevel) {
+        setThinkingLevel(state.thinkingLevel)
       }
       refreshStats(ws.path, session.id)
     } catch (e) {

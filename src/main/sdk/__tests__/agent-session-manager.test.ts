@@ -248,4 +248,55 @@ describe('AgentSessionManager', () => {
 
     lruManager.stopAll()
   })
+
+  it('should switch to a new sessionPath even when another session is active in the workspace', async () => {
+    let callCount = 0
+    const customManager = new AgentSessionManager({
+      sessionManagerFactory: (_cwd, sessionPath) => {
+        callCount++
+        const sm = SessionManager.inMemory()
+        ;(sm as any).getSessionId = () => (sessionPath ? `sess-${sessionPath}` : `sess-default-${callCount}`)
+        return sm
+      }
+    })
+
+    // 1. Initialize active session in testWorkspace
+    const initialEntry = await customManager.getOrCreateEntry(testWorkspace)
+    expect(initialEntry.sessionId).toBe('sess-default-1')
+
+    // 2. Switch to a new sessionPath
+    const switchRes = await customManager.switchSession(testWorkspace, '/path/to/second-session.jsonl')
+    expect(switchRes.sessionId).toBe('sess-/path/to/second-session.jsonl')
+    expect(switchRes.sessionId).not.toBe(initialEntry.sessionId)
+
+    customManager.stopAll()
+  })
+
+  it('should stop session by sessionPath or filename basename', async () => {
+    let disposed = false
+    const customManager = new AgentSessionManager({
+      sessionManagerFactory: (_cwd, _sessionPath) => {
+        const sm = SessionManager.inMemory()
+        ;(sm as any).getSessionId = () => '01a06d11-578f-78ae-a8fd-4e9ce3e5974c'
+        return sm
+      }
+    })
+
+    const sessionPath = '/sessions/2026-09-04T15-37-28-207Z_01a06d11-578f-78ae-a8fd-4e9ce3e5974c.jsonl'
+    const entryRes = await customManager.switchSession(testWorkspace, sessionPath)
+    expect(entryRes.sessionId).toBe('01a06d11-578f-78ae-a8fd-4e9ce3e5974c')
+
+    // Find entry and attach spy
+    const entry = await customManager.getOrCreateEntry(testWorkspace, entryRes.sessionId)
+    entry.runtime.dispose = () => {
+      disposed = true
+    }
+
+    // Stop using sessionPath
+    customManager.stopSession(testWorkspace, sessionPath)
+    expect(disposed).toBe(true)
+
+    customManager.stopAll()
+  })
 })
+

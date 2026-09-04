@@ -97,4 +97,23 @@ describe('WorkspaceGroup component', () => {
     expect(html).toContain('workspace-streaming-indicator')
     expect(html).toContain('animate-ping')
   })
+
+  it('renders workspace group with breathing indicator when default workspace session is streaming', () => {
+    const html = renderToStaticMarkup(
+      <WorkspaceGroup
+        workspace={mockWorkspace}
+        isActive={true}
+        sessions={mockSessions}
+        streamingMap={{ [`${mockWorkspace.path}::__default__`]: true }}
+        onSelectWorkspace={() => {}}
+        onSelectSession={() => {}}
+        onNewSession={() => {}}
+        onDeleteSession={() => {}}
+        onRemoveWorkspace={() => {}}
+      />
+    )
+    expect(html).toContain('测试工作区')
+    expect(html).toContain('workspace-streaming-indicator')
+    expect(html).toContain('animate-ping')
+  })
 })

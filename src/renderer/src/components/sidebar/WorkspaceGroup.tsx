@@ -29,7 +29,9 @@ export const WorkspaceGroup: React.FC<WorkspaceGroupProps> = ({
   onRemoveWorkspace
 }) => {
   const [isOpen, setIsOpen] = useState(true)
-  const isWorkspaceStreaming = sessions.some((s) => !!streamingMap?.[s.id])
+  const isWorkspaceStreaming =
+    sessions.some((s) => !!streamingMap?.[s.id]) ||
+    !!streamingMap?.[`${workspace.path}::__default__`]
 
   return (
     <div className="mb-2">

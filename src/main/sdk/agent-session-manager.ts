@@ -1,3 +1,4 @@
+import path from 'path'
 import type {
   AgentSessionRuntime,
   ModelRuntime,
@@ -159,6 +160,9 @@ export class AgentSessionManager implements IAgentSessionService {
           this.pruneEntriesIfNecessary()
           const actualKey = this.makeKey(normalized, entry.sessionId)
           this.entries.set(actualKey, entry)
+          if (actualKey !== key) {
+            this.entries.set(key, entry)
+          }
           this.activeSessionIdByWorkspace.set(normalized, entry.sessionId)
           this.inFlightCreations.delete(key)
           return entry
@@ -172,7 +176,44 @@ export class AgentSessionManager implements IAgentSessionService {
       return await creationPromise
     }
 
-    // 2. If no sessionId, check workspace's active session
+    // 2. If explicit sessionPath is requested
+    if (sessionPath) {
+      for (const entry of this.entries.values()) {
+        if (
+          entry.workspacePath === normalized &&
+          (entry.sessionPath === sessionPath || entry.runtime.session.sessionFile === sessionPath)
+        ) {
+          entry.lastActiveAt = Date.now()
+          this.activeSessionIdByWorkspace.set(normalized, entry.sessionId)
+          return entry
+        }
+      }
+
+      const pathKey = `${normalized}::path::${sessionPath}`
+      const inFlight = this.inFlightCreations.get(pathKey)
+      if (inFlight) {
+        return await inFlight
+      }
+
+      const creationPromise = this.createEntry(normalized, undefined, sessionPath)
+        .then((entry) => {
+          this.pruneEntriesIfNecessary()
+          const actualKey = this.makeKey(normalized, entry.sessionId)
+          this.entries.set(actualKey, entry)
+          this.activeSessionIdByWorkspace.set(normalized, entry.sessionId)
+          this.inFlightCreations.delete(pathKey)
+          return entry
+        })
+        .catch((err) => {
+          this.inFlightCreations.delete(pathKey)
+          throw err
+        })
+
+      this.inFlightCreations.set(pathKey, creationPromise)
+      return await creationPromise
+    }
+
+    // 3. If no sessionId and no sessionPath, check workspace's active session
     const activeId = this.activeSessionIdByWorkspace.get(normalized)
     if (activeId) {
       const existing = this.entries.get(this.makeKey(normalized, activeId))
@@ -182,7 +223,7 @@ export class AgentSessionManager implements IAgentSessionService {
       }
     }
 
-    // 3. Fallback to any existing session in this workspace
+    // 4. Fallback to any existing session in this workspace
     for (const entry of this.entries.values()) {
       if (entry.workspacePath === normalized) {
         entry.lastActiveAt = Date.now()
@@ -191,7 +232,7 @@ export class AgentSessionManager implements IAgentSessionService {
       }
     }
 
-    // 4. Create new entry for workspace
+    // 5. Create new entry for workspace
     const pendingKey = `${normalized}::__pending__`
     const inFlight = this.inFlightCreations.get(pendingKey)
     if (inFlight) {
@@ -443,26 +484,7 @@ export class AgentSessionManager implements IAgentSessionService {
     workspacePath: string,
     sessionPath: string
   ): Promise<{ sessionId: string; sessionPath?: string }> {
-    const normalized = workspacePath.trim()
-
-    // 1. Check if an entry with this sessionPath already exists
-    for (const entry of this.entries.values()) {
-      if (
-        entry.workspacePath === normalized &&
-        (entry.sessionPath === sessionPath || entry.runtime.session.sessionFile === sessionPath)
-      ) {
-        entry.lastActiveAt = Date.now()
-        this.activeSessionIdByWorkspace.set(normalized, entry.sessionId)
-        return {
-          sessionId: entry.sessionId,
-          sessionPath: entry.sessionPath
-        }
-      }
-    }
-
-    // 2. Open from sessionPath into a fresh or pooled entry
-    const entry = await this.getOrCreateEntry(normalized, undefined, sessionPath)
-    this.activeSessionIdByWorkspace.set(normalized, entry.sessionId)
+    const entry = await this.getOrCreateEntry(workspacePath, undefined, sessionPath)
     return {
       sessionId: entry.sessionId,
       sessionPath: entry.sessionPath
@@ -505,18 +527,31 @@ export class AgentSessionManager implements IAgentSessionService {
     await modelRuntime.refresh({ allowNetwork: false })
   }
 
-  public stopSession(workspacePath: string, sessionId: string): void {
+  public stopSession(workspacePath: string, sessionIdOrPath: string): void {
     const normalized = workspacePath.trim()
-    const key = this.makeKey(normalized, sessionId)
-    const entry = this.entries.get(key)
-    if (entry) {
-      try {
-        entry.unsubscribe()
-        entry.runtime.dispose()
-      } catch {}
-      this.entries.delete(key)
-      if (this.activeSessionIdByWorkspace.get(normalized) === sessionId) {
-        this.activeSessionIdByWorkspace.delete(normalized)
+    const target = sessionIdOrPath.trim()
+
+    for (const [key, entry] of this.entries) {
+      if (entry.workspacePath === normalized) {
+        const matches =
+          entry.sessionId === target ||
+          entry.sessionPath === target ||
+          entry.runtime.session.sessionFile === target ||
+          key === this.makeKey(normalized, target) ||
+          (entry.sessionPath && path.basename(entry.sessionPath, '.jsonl') === target) ||
+          (entry.runtime.session.sessionFile &&
+            path.basename(entry.runtime.session.sessionFile, '.jsonl') === target)
+
+        if (matches) {
+          try {
+            entry.unsubscribe()
+            entry.runtime.dispose()
+          } catch {}
+          this.entries.delete(key)
+          if (this.activeSessionIdByWorkspace.get(normalized) === entry.sessionId) {
+            this.activeSessionIdByWorkspace.delete(normalized)
+          }
+        }
       }
     }
   }
