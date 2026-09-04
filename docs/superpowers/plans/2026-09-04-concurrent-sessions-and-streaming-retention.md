@@ -152,7 +152,7 @@ git commit -m "feat(ipc): route session-scoped commands and events in IPC handle
   - `statsMap: Record<string, { tokens?: number; cost?: number }>`
   - Continuous streaming state ingestion without data loss when switching sessions or workspaces.
 
-- [ ] **Step 1: Refactor state in `App.tsx` to state dictionaries**
+- [x] **Step 1: Refactor state in `App.tsx` to state dictionaries**
 
 - Replace single `messages`, `isStreaming`, `sessionStats` with `messagesMap`, `streamingMap`, `statsMap`.
 - Compute active display message list: `const activeMessages = (activeSessionId && messagesMap[activeSessionId]) || []`.
@@ -166,16 +166,16 @@ git commit -m "feat(ipc): route session-scoped commands and events in IPC handle
   - If `messagesMap[session.id]` exists in memory, keep it immediately; otherwise load from file and populate `messagesMap[session.id]`.
   - No clearing or flicker when switching back and forth!
 
-- [ ] **Step 2: Verify prompt sending with active session**
+- [x] **Step 2: Verify prompt sending with active session**
 
 - In `handleSendPrompt`, pass `{ workspacePath: activeWorkspace.path, sessionId: activeSessionId, message: messageText }`.
 
-- [ ] **Step 3: Run Vitest & verify existing tests**
+- [x] **Step 3: Run Vitest & verify existing tests**
 
 Run: `npm test`
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/renderer/src/App.tsx src/renderer/src/types/index.ts
