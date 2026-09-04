@@ -30,9 +30,9 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   }, [messages, isStreaming])
 
   return (
-    <div className="flex-1 h-full flex flex-col bg-[#0d1117] min-w-0 overflow-hidden">
+    <div className="flex-1 h-full flex flex-col bg-[#0d1117] min-w-0 overflow-hidden titlebar-no-drag">
       {/* Main Messages Container */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto select-text titlebar-no-drag">
         {!workspace ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-8 text-gray-500">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600/20 to-purple-600/20 border border-blue-500/30 flex items-center justify-center text-accent mb-4 shadow-inner">

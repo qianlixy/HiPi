@@ -46,7 +46,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
   }
 
   return (
-    <div className="p-4 bg-[#0d1117] border-t border-[#30363d] flex-shrink-0">
+    <div className="p-4 bg-[#0d1117] border-t border-[#30363d] flex-shrink-0 titlebar-no-drag">
       <div className="relative max-w-4xl mx-auto rounded-xl border border-[#30363d] bg-[#161b22] shadow-lg transition-all focus-within:border-accent/80 focus-within:ring-1 focus-within:ring-accent/40">
         <textarea
           ref={textareaRef}
@@ -60,7 +60,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
               : '向 PI 发送指令，或让它编写、重构代码... (Enter 发送, Shift+Enter 换行)'
           }
           rows={1}
-          className="w-full px-4 pt-3 pb-12 bg-transparent text-sm text-gray-100 placeholder-gray-500 resize-none outline-none max-h-48"
+          className="w-full px-4 pt-3 pb-12 bg-transparent text-sm text-gray-100 placeholder-gray-500 resize-none outline-none max-h-48 select-text"
         />
 
         {/* Bottom Actions Row */}
