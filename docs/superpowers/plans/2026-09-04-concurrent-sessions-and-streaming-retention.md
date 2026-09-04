@@ -118,18 +118,18 @@ git commit -m "feat(sdk): support concurrent session runtime pool and stream-pro
   - Updated IPC handler registrations accepting `{ workspacePath, sessionId, ... }`.
   - On `session:delete`, abort and dispose the session runtime in `AgentSessionManager`.
 
-- [ ] **Step 1: Update IPC handlers in `register-handlers.ts`**
+- [x] **Step 1: Update IPC handlers in `register-handlers.ts`**
 
 - Forward `{ workspacePath, sessionId, event }` in `sessionManager.onEvent`.
 - Update `pi:send-prompt`, `pi:abort`, `pi:get-state`, `pi:get-messages`, `pi:set-model`, `pi:set-thinking-level` to pass `sessionId` to `sessionManager`.
 - Update `session:delete` to also call `sessionManager.stopSession(workspacePath, sessionId)` if active.
 
-- [ ] **Step 2: Run tests and verify build**
+- [x] **Step 2: Run tests and verify build**
 
 Run: `npm test`
 Expected: PASS.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/main/ipc/register-handlers.ts
