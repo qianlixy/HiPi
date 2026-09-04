@@ -27,7 +27,34 @@
   background: #484f58;
 }
 
+/* Text selection rules */
+.select-text {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.select-none {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Markdown styling overrides */
+.prose,
+.prose p,
+.prose span,
+.prose pre,
+.prose code,
+.prose ul,
+.prose ol,
+.prose li,
+.prose blockquote,
+.prose table,
+.prose th,
+.prose td {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 .prose pre {
   background-color: #161b22 !important;
   border: 1px solid #30363d;

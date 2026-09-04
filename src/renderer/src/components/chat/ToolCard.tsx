@@ -50,7 +50,7 @@ export const ToolCard: React.FC<ToolCardProps> = ({ tool }) => {
       {/* Header */}
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-[#21262d] transition-colors"
+        className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-[#21262d] transition-colors select-none"
       >
         <div className="flex items-center space-x-2 truncate flex-1 min-w-0">
           <button className="text-gray-400 p-0.5">
@@ -71,13 +71,13 @@ export const ToolCard: React.FC<ToolCardProps> = ({ tool }) => {
 
       {/* Body: Output or details */}
       {isOpen && (
-        <div className="border-t border-[#30363d] bg-[#0d1117] p-2.5 font-mono text-[11px] max-h-60 overflow-y-auto">
+        <div className="border-t border-[#30363d] bg-[#0d1117] p-2.5 font-mono text-[11px] max-h-60 overflow-y-auto select-text">
           {tool.output ? (
-            <pre className="text-gray-300 whitespace-pre-wrap break-all">{tool.output}</pre>
+            <pre className="text-gray-300 whitespace-pre-wrap break-all select-text">{tool.output}</pre>
           ) : tool.error ? (
-            <pre className="text-red-400 whitespace-pre-wrap break-all">{tool.error}</pre>
+            <pre className="text-red-400 whitespace-pre-wrap break-all select-text">{tool.error}</pre>
           ) : (
-            <div className="text-gray-500 italic">命令正在执行中，等待输出...</div>
+            <div className="text-gray-500 italic select-none">命令正在执行中，等待输出...</div>
           )}
         </div>
       )}

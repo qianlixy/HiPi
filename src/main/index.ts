@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, Menu, MenuItem, clipboard } from 'electron'
 import { join } from 'path'
 import fs from 'fs'
 import { PiRuntimeManager } from './runtime/pi-runtime'
@@ -50,6 +50,46 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
+  // Setup context menu for text selection, links, and input elements
+  mainWindow.webContents.on('context-menu', (_event, params) => {
+    const menu = new Menu()
+
+    if (params.isEditable) {
+      menu.append(new MenuItem({ role: 'undo', label: '撤销' }))
+      menu.append(new MenuItem({ role: 'redo', label: '重做' }))
+      menu.append(new MenuItem({ type: 'separator' }))
+      menu.append(new MenuItem({ role: 'cut', label: '剪切' }))
+      menu.append(new MenuItem({ role: 'copy', label: '复制' }))
+      menu.append(new MenuItem({ role: 'paste', label: '粘贴' }))
+      menu.append(new MenuItem({ type: 'separator' }))
+      menu.append(new MenuItem({ role: 'selectAll', label: '全选' }))
+      menu.popup()
+      return
+    }
+
+    const hasSelection = Boolean(params.selectionText && params.selectionText.trim().length > 0)
+
+    if (hasSelection) {
+      menu.append(new MenuItem({ role: 'copy', label: '复制' }))
+      menu.append(new MenuItem({ type: 'separator' }))
+      menu.append(new MenuItem({ role: 'selectAll', label: '全选' }))
+    }
+
+    if (params.linkURL) {
+      if (hasSelection) menu.append(new MenuItem({ type: 'separator' }))
+      menu.append(
+        new MenuItem({
+          label: '复制链接地址',
+          click: () => clipboard.writeText(params.linkURL)
+        })
+      )
+    }
+
+    if (menu.items.length > 0) {
+      menu.popup()
+    }
+  })
+
   // Load URL
   if (process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
@@ -58,7 +98,52 @@ function createWindow(): void {
   }
 }
 
+function setupApplicationMenu(): void {
+  const isMac = process.platform === 'darwin'
+  const template: Electron.MenuItemConstructorOptions[] = [
+    ...(isMac
+      ? [
+          {
+            role: 'appMenu' as const,
+            label: app.name
+          }
+        ]
+      : []),
+    {
+      role: 'fileMenu',
+      label: '文件'
+    },
+    {
+      role: 'editMenu',
+      label: '编辑',
+      submenu: [
+        { role: 'undo', label: '撤销' },
+        { role: 'redo', label: '重做' },
+        { type: 'separator' },
+        { role: 'cut', label: '剪切' },
+        { role: 'copy', label: '复制' },
+        { role: 'paste', label: '粘贴' },
+        { type: 'separator' },
+        { role: 'selectAll', label: '全选' }
+      ]
+    },
+    {
+      role: 'viewMenu',
+      label: '视图'
+    },
+    {
+      role: 'windowMenu',
+      label: '窗口'
+    }
+  ]
+
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+}
+
 app.whenReady().then(async () => {
+  setupApplicationMenu()
+
   // Register all IPC handlers
   registerIpcHandlers(
     () => mainWindow,
