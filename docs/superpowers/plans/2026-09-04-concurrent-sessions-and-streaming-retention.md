@@ -234,17 +234,17 @@ git commit -m "feat(ui): add real-time running and breathing indicators to sideb
 **Files:**
 - Run all test suites across main, preload, and renderer.
 
-- [ ] **Step 1: Execute test suite**
+- [x] **Step 1: Execute test suite**
 
 Run: `npm test`
 Expected: All tests pass.
 
-- [ ] **Step 2: Type check and production build verification**
+- [x] **Step 2: Type check and production build verification**
 
 Run: `npx tsc --noEmit && npm run build`
 Expected: Clean build without typescript or bundling errors.
 
-- [ ] **Step 3: Commit and final clean check**
+- [x] **Step 3: Commit and final clean check**
 
 ```bash
 git status
