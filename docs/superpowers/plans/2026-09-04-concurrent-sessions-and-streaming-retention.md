@@ -36,16 +36,16 @@
   - `pi.getMessages({ workspacePath: string; sessionId?: string })`
   - `pi.onEvent(callback: (data: { workspacePath: string; sessionId: string; event: any }) => void)`
 
-- [ ] **Step 1: Write type definitions and interface extensions**
+- [x] **Step 1: Write type definitions and interface extensions**
 
 Update `src/main/types.ts`, `src/main/sdk/types.ts`, `src/preload/index.ts`, and `src/preload/index.d.ts` to include optional `sessionId` in PI API calls and ensure `pi:event`, `pi:stderr`, `pi:exit` support `sessionId: string`.
 
-- [ ] **Step 2: Run type check & build test**
+- [x] **Step 2: Run type check & build test**
 
 Run: `npx tsc --noEmit`
 Expected: PASS (or minor expected call-site updates)
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/main/types.ts src/main/sdk/types.ts src/preload/index.ts src/preload/index.d.ts
