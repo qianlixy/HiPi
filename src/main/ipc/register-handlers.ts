@@ -1,6 +1,6 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { PiRuntimeManager } from '../runtime/pi-runtime'
-import { WorkspaceProcessPool } from '../rpc/process-pool'
+import { AgentSessionManager } from '../sdk/agent-session-manager'
 import { SessionScanner } from '../session/session-scanner'
 import { SettingsStore } from '../store'
 import path from 'path'
@@ -8,10 +8,21 @@ import path from 'path'
 export function registerIpcHandlers(
   getMainWindow: () => BrowserWindow | null,
   runtimeManager: PiRuntimeManager,
-  processPool: WorkspaceProcessPool,
+  sessionManager: AgentSessionManager,
   sessionScanner: SessionScanner,
   settingsStore: SettingsStore
 ) {
+  // Listen to session manager events and forward to renderer
+  sessionManager.onEvent(({ workspacePath, event }) => {
+    const win = getMainWindow()
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('pi:event', {
+        workspacePath,
+        event
+      })
+    }
+  })
+
   // --- Workspace Dialog & Management ---
   ipcMain.handle('workspace:open-dialog', async () => {
     const win = getMainWindow()
@@ -47,7 +58,7 @@ export function registerIpcHandlers(
   })
 
   ipcMain.handle('workspace:remove', async (_, workspacePath: string) => {
-    processPool.stopClient(workspacePath)
+    sessionManager.stopWorkspace(workspacePath)
     const settings = settingsStore.getSettings()
     const updated = settings.workspaces.filter((w) => w.path !== workspacePath)
     const nextActive =
@@ -59,9 +70,8 @@ export function registerIpcHandlers(
   })
 
   ipcMain.handle('workspace:start-client', async (_, workspacePath: string) => {
-    const win = getMainWindow()
-    const client = await processPool.getOrCreateClient(workspacePath, win)
-    return client.getStatus()
+    await sessionManager.getOrCreateEntry(workspacePath)
+    return true
   })
 
   // --- Session Management ---
@@ -81,100 +91,70 @@ export function registerIpcHandlers(
     return await sessionScanner.getSessionMessages(sessionPath)
   })
 
-  // --- PI RPC Interaction ---
+  // --- PI SDK Interaction ---
   ipcMain.handle(
     'pi:send-prompt',
     async (_, { workspacePath, message, images }: { workspacePath: string; message: string; images?: string[] }) => {
-      const win = getMainWindow()
-      const client = await processPool.getOrCreateClient(workspacePath, win)
-      return await client.prompt(message, images)
+      return await sessionManager.prompt(workspacePath, message, images)
     }
   )
 
   ipcMain.handle('pi:abort', async (_, workspacePath: string) => {
-    const client = processPool.getClient(workspacePath)
-    if (client) {
-      await client.abort()
-      return true
-    }
-    return false
+    return await sessionManager.abort(workspacePath)
   })
 
   ipcMain.handle('pi:get-available-models', async (_, workspacePath: string) => {
-    const win = getMainWindow()
-    const client = await processPool.getOrCreateClient(workspacePath, win)
-    return await client.getAvailableModels()
+    return await sessionManager.getAvailableModels(workspacePath)
   })
 
   ipcMain.handle(
     'pi:set-model',
     async (_, { workspacePath, provider, modelId }: { workspacePath: string; provider: string; modelId: string }) => {
-      const win = getMainWindow()
-      const client = await processPool.getOrCreateClient(workspacePath, win)
-      return await client.setModel(provider, modelId)
+      return await sessionManager.setModel(workspacePath, provider, modelId)
     }
   )
 
   ipcMain.handle('pi:get-available-thinking-levels', async (_, workspacePath: string) => {
-    const win = getMainWindow()
-    const client = await processPool.getOrCreateClient(workspacePath, win)
-    return await client.getAvailableThinkingLevels()
+    return await sessionManager.getAvailableThinkingLevels(workspacePath)
   })
 
   ipcMain.handle(
     'pi:set-thinking-level',
     async (_, { workspacePath, level }: { workspacePath: string; level: string }) => {
-      const win = getMainWindow()
-      const client = await processPool.getOrCreateClient(workspacePath, win)
-      return await client.setThinkingLevel(level)
+      return await sessionManager.setThinkingLevel(workspacePath, level)
     }
   )
 
   ipcMain.handle('pi:get-state', async (_, workspacePath: string) => {
-    const win = getMainWindow()
-    const client = await processPool.getOrCreateClient(workspacePath, win)
-    return await client.getState()
+    return await sessionManager.getState(workspacePath)
   })
 
   ipcMain.handle('pi:get-messages', async (_, workspacePath: string) => {
-    const win = getMainWindow()
-    const client = await processPool.getOrCreateClient(workspacePath, win)
-    return await client.getMessages()
+    return await sessionManager.getMessages(workspacePath)
   })
 
   ipcMain.handle('pi:new-session', async (_, workspacePath: string) => {
-    const win = getMainWindow()
-    const client = await processPool.getOrCreateClient(workspacePath, win)
-    return await client.newSession()
+    return await sessionManager.newSession(workspacePath)
   })
 
   ipcMain.handle(
     'pi:switch-session',
     async (_, { workspacePath, sessionPath }: { workspacePath: string; sessionPath: string }) => {
-      const win = getMainWindow()
-      const client = await processPool.getOrCreateClient(workspacePath, win)
-      return await client.switchSession(sessionPath)
+      return await sessionManager.switchSession(workspacePath, sessionPath)
     }
   )
 
   ipcMain.handle('pi:get-session-stats', async (_, workspacePath: string) => {
-    const win = getMainWindow()
-    const client = await processPool.getOrCreateClient(workspacePath, win)
-    return await client.getSessionStats()
+    return await sessionManager.getSessionStats(workspacePath)
   })
 
-  // --- PI Runtime Sandbox & Version Upgrade ---
+  // --- PI Runtime Status & Version ---
   ipcMain.handle('pi:runtime-status', async () => {
     return await runtimeManager.getStatus()
   })
 
   ipcMain.handle('pi:runtime-upgrade', async () => {
-    const res = await runtimeManager.installOrUpdate()
-    if (res.success) {
-      // Refresh process pool executable path if needed
-      processPool.stopAll()
-    }
-    return res
+    return await runtimeManager.installOrUpdate()
   })
 
   // --- Settings ---
@@ -184,7 +164,7 @@ export function registerIpcHandlers(
 
   ipcMain.handle('settings:save', async (_, newSettings) => {
     const updated = settingsStore.saveSettings(newSettings)
-    processPool.setEnv(settingsStore.getEnv())
+    await sessionManager.syncSettings(updated)
     return updated
   })
 }

@@ -1,7 +1,8 @@
 import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
+import fs from 'fs'
 import { PiRuntimeManager } from './runtime/pi-runtime'
-import { WorkspaceProcessPool } from './rpc/process-pool'
+import { AgentSessionManager } from './sdk/agent-session-manager'
 import { SessionScanner } from './session/session-scanner'
 import { SettingsStore } from './store'
 import { registerIpcHandlers } from './ipc/register-handlers'
@@ -10,13 +11,19 @@ let mainWindow: BrowserWindow | null = null
 
 const settingsStore = new SettingsStore()
 const runtimeManager = new PiRuntimeManager()
-const processPool = new WorkspaceProcessPool(runtimeManager)
+const sessionManager = new AgentSessionManager()
 const sessionScanner = new SessionScanner()
 
-// Apply environment variables from store
-processPool.setEnv(settingsStore.getEnv())
+// Sync initial settings to SDK session manager
+sessionManager.syncSettings(settingsStore.getSettings()).catch((err) => {
+  console.error('Failed to sync initial settings to SDK session manager:', err)
+})
 
 function createWindow(): void {
+  const preloadPath = fs.existsSync(join(__dirname, '../preload/index.mjs'))
+    ? join(__dirname, '../preload/index.mjs')
+    : join(__dirname, '../preload/index.js')
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 820,
@@ -28,7 +35,7 @@ function createWindow(): void {
     trafficLightPosition: { x: 16, y: 18 },
     backgroundColor: '#0d1117',
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: preloadPath,
       sandbox: false,
       contextIsolation: true
     }
@@ -56,7 +63,7 @@ app.whenReady().then(async () => {
   registerIpcHandlers(
     () => mainWindow,
     runtimeManager,
-    processPool,
+    sessionManager,
     sessionScanner,
     settingsStore
   )
@@ -74,12 +81,12 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', () => {
-  processPool.stopAll()
+  sessionManager.stopAll()
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
 
 app.on('before-quit', () => {
-  processPool.stopAll()
+  sessionManager.stopAll()
 })

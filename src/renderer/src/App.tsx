@@ -212,7 +212,10 @@ export const App: React.FC = () => {
         }
       } else if (evType === 'message_update') {
         // Delta stream
-        const delta = event.delta || ''
+        const delta =
+          event.delta ||
+          (event.assistantMessageEvent?.type === 'text_delta' ? event.assistantMessageEvent.delta : '') ||
+          ''
         setMessages((prev) => {
           if (prev.length === 0) return prev
           const last = prev[prev.length - 1]
