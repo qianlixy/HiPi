@@ -76,13 +76,17 @@ const hipiApi = {
     ) => {
       const handler = (_: any, data: any) => callback(data)
       ipcRenderer.on('pi:event', handler)
-      return () => ipcRenderer.removeListener('pi:event', handler)
+      return () => {
+        ipcRenderer.removeListener('pi:event', handler)
+      }
     },
 
     onStderr: (callback: (data: { workspacePath: string; text: string }) => void) => {
       const handler = (_: any, data: any) => callback(data)
       ipcRenderer.on('pi:stderr', handler)
-      return () => ipcRenderer.removeListener('pi:stderr', handler)
+      return () => {
+        ipcRenderer.removeListener('pi:stderr', handler)
+      }
     },
 
     onExit: (
@@ -90,7 +94,9 @@ const hipiApi = {
     ) => {
       const handler = (_: any, data: any) => callback(data)
       ipcRenderer.on('pi:exit', handler)
-      return () => ipcRenderer.removeListener('pi:exit', handler)
+      return () => {
+        ipcRenderer.removeListener('pi:exit', handler)
+      }
     }
   },
 
