@@ -70,7 +70,7 @@ git commit -m "feat(ipc): upgrade IPC contracts with sessionId support"
   - `AgentSessionManager.stopWorkspace(workspacePath: string): void`
   - `AgentSessionManager.onEvent(callback: (data: { workspacePath: string; sessionId: string; event: any }) => void)`
 
-- [ ] **Step 1: Write unit tests for multi-session concurrency & stream-safe LRU eviction**
+- [x] **Step 1: Write unit tests for multi-session concurrency & stream-safe LRU eviction**
 
 In `src/main/sdk/__tests__/agent-session-manager.test.ts`:
 - Test: "runs prompts in two separate sessions of the same workspace concurrently"
@@ -78,12 +78,12 @@ In `src/main/sdk/__tests__/agent-session-manager.test.ts`:
 - Test: "LRU eviction skips sessions that are currently prompting or streaming"
 - Test: "emits events with precise sessionId"
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `npx vitest run src/main/sdk/__tests__/agent-session-manager.test.ts`
 Expected: FAIL due to lack of multi-session support.
 
-- [ ] **Step 3: Implement multi-session pool in `AgentSessionManager`**
+- [x] **Step 3: Implement multi-session pool in `AgentSessionManager`**
 
 - Refactor `entries` to map `sessionKey: `${workspacePath}::${sessionId}``.
 - Maintain a workspace default session mapping for fallback when `sessionId` is not provided.
@@ -92,12 +92,12 @@ Expected: FAIL due to lack of multi-session support.
 - In `pruneEntriesIfNecessary`, skip entries where `entry.isPrompting || entry.runtime.session.isStreaming`.
 - In `emitEvent`, pass both `workspacePath` and `entry.sessionId`.
 
-- [ ] **Step 4: Run unit tests to verify pass**
+- [x] **Step 4: Run unit tests to verify pass**
 
 Run: `npx vitest run src/main/sdk/__tests__/agent-session-manager.test.ts`
 Expected: PASS (all tests pass).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/sdk/agent-session-manager.ts src/main/sdk/__tests__/agent-session-manager.test.ts
