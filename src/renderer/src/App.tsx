@@ -3,6 +3,7 @@ import { Sidebar } from './components/sidebar/Sidebar'
 import { Header } from './components/header/Header'
 import { ChatArea } from './components/chat/ChatArea'
 import { SettingsModal } from './components/settings/SettingsModal'
+import { ConfirmDialog } from './components/common/ConfirmDialog'
 import {
   Workspace,
   SessionSummary,
@@ -25,6 +26,7 @@ export const App: React.FC = () => {
 
   const [runtimeStatus, setRuntimeStatus] = useState<PiRuntimeStatus | null>(null)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [sessionPendingDelete, setSessionPendingDelete] = useState<SessionSummary | null>(null)
   const [currentModel, setCurrentModel] = useState<{ provider: string; modelId: string } | undefined>(undefined)
   const [thinkingLevel, setThinkingLevel] = useState<string>('off')
 
@@ -486,6 +488,21 @@ export const App: React.FC = () => {
     loadAllSessions()
   }
 
+  const handleRequestDeleteSession = (session: SessionSummary) => {
+    setSessionPendingDelete(session)
+  }
+
+  const handleConfirmDeleteSession = async () => {
+    if (!sessionPendingDelete) return
+    const session = sessionPendingDelete
+    setSessionPendingDelete(null)
+    await handleDeleteSession(session)
+  }
+
+  const handleCancelDeleteSession = () => {
+    setSessionPendingDelete(null)
+  }
+
   const handleRemoveWorkspace = async (ws: Workspace) => {
     const updated = await window.hipiApi.workspace.remove(ws.path)
     setWorkspaces(updated)
@@ -633,7 +650,7 @@ export const App: React.FC = () => {
         onSelectWorkspace={selectWorkspace}
         onSelectSession={handleSelectSession}
         onNewSession={handleNewSession}
-        onDeleteSession={handleDeleteSession}
+        onDeleteSession={handleRequestDeleteSession}
         onRemoveWorkspace={handleRemoveWorkspace}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
@@ -669,6 +686,32 @@ export const App: React.FC = () => {
             loadWorkspaceMessages(activeWorkspace.path, activeSessionId)
           }
         }}
+      />
+
+      {/* Session Deletion Secondary Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!sessionPendingDelete}
+        title="删除会话"
+        confirmText="确认删除"
+        confirmVariant="danger"
+        message={
+          sessionPendingDelete ? (
+            <div>
+              <p>
+                确认删除会话{' '}
+                <span className="font-semibold text-gray-200">
+                  「{sessionPendingDelete.name || '新会话'}」
+                </span>{' '}
+                吗？
+              </p>
+              <p className="text-red-400/90 text-xs mt-2">
+                此操作将永久物理删除本地会话文件，无法恢复。
+              </p>
+            </div>
+          ) : null
+        }
+        onConfirm={handleConfirmDeleteSession}
+        onCancel={handleCancelDeleteSession}
       />
     </div>
   )
