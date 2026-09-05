@@ -20,6 +20,36 @@ function extractNodeText(node: React.ReactNode): string {
   return ''
 }
 
+export function handleLinkClick(e: React.MouseEvent<HTMLAnchorElement>, href?: string) {
+  e.preventDefault()
+  if (!href) return
+  if (typeof window !== 'undefined' && window.hipiApi?.system?.openExternal) {
+    window.hipiApi.system.openExternal(href)
+  } else if (typeof window !== 'undefined' && typeof window.open === 'function') {
+    window.open(href, '_blank', 'noopener,noreferrer')
+  }
+}
+
+export const MarkdownLink: React.FC<React.AnchorHTMLAttributes<HTMLAnchorElement>> = ({
+  href,
+  children,
+  ...props
+}) => {
+  return (
+    <a
+      href={href}
+      onClick={(e) => handleLinkClick(e, href)}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={href}
+      className="text-[#58a6ff] hover:text-[#79c0ff] hover:underline underline-offset-2 decoration-[#58a6ff]/60 cursor-pointer font-medium transition-colors duration-150 break-all"
+      {...props}
+    >
+      {children}
+    </a>
+  )
+}
+
 const CodeBlock: React.FC<React.HTMLAttributes<HTMLPreElement>> = ({ children, ...props }) => {
   const [copied, setCopied] = useState(false)
 
@@ -133,7 +163,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
               components={{
                 pre({ children, ...props }) {
                   return <CodeBlock {...props}>{children}</CodeBlock>
-                }
+                },
+                a: MarkdownLink
               }}
             >
               {message.content}
