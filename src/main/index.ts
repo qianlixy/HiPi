@@ -5,7 +5,7 @@ import { PiRuntimeManager } from './runtime/pi-runtime'
 import { AgentSessionManager } from './sdk/agent-session-manager'
 import { SessionScanner } from './session/session-scanner'
 import { SettingsStore } from './store'
-import { registerIpcHandlers } from './ipc/register-handlers'
+import { registerIpcHandlers, safeOpenExternal } from './ipc/register-handlers'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -48,6 +48,16 @@ function createWindow(): void {
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
+  })
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const currentUrl = mainWindow?.webContents.getURL()
+    if (url !== currentUrl) {
+      event.preventDefault()
+      safeOpenExternal(url).catch((err) => {
+        console.error('Failed to open external link on will-navigate:', err)
+      })
+    }
   })
 
   // Setup context menu for text selection, links, and input elements

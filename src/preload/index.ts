@@ -122,7 +122,16 @@ const hipiApi = {
     get: (): Promise<AppSettings> => ipcRenderer.invoke('settings:get'),
     save: (newSettings: Partial<AppSettings>): Promise<AppSettings> =>
       ipcRenderer.invoke('settings:save', newSettings)
+  },
+
+  system: {
+    openExternal: (url: string): Promise<boolean> =>
+      ipcRenderer.invoke('system:open-external', url)
   }
+}
+
+export interface SystemApi {
+  openExternal: (url: string) => Promise<boolean>
 }
 
 export type HipiApi = typeof hipiApi

@@ -288,7 +288,7 @@ describe('AgentSessionManager', () => {
 
     // Find entry and attach spy
     const entry = await customManager.getOrCreateEntry(testWorkspace, entryRes.sessionId)
-    entry.runtime.dispose = () => {
+    entry.runtime.dispose = async () => {
       disposed = true
     }
 

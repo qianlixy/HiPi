@@ -70,3 +70,15 @@
   background-color: transparent;
   padding: 0;
 }
+
+.prose a {
+  color: #58a6ff;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s ease-in-out;
+}
+.prose a:hover {
+  color: #79c0ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
