@@ -2,6 +2,7 @@ import React from 'react'
 import { FolderPlus, Settings, Sparkles, RefreshCw } from 'lucide-react'
 import { Workspace, SessionSummary, PiRuntimeStatus } from '../../types'
 import { WorkspaceGroup } from './WorkspaceGroup'
+import { SidebarQuickNav } from './SidebarQuickNav'
 
 interface SidebarProps {
   workspaces: Workspace[]
@@ -17,6 +18,7 @@ interface SidebarProps {
   onDeleteSession: (session: SessionSummary) => void
   onRemoveWorkspace: (ws: Workspace) => void
   onOpenSettings: () => void
+  onQuickAction?: (actionId: string, label: string) => void
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -32,7 +34,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNewSession,
   onDeleteSession,
   onRemoveWorkspace,
-  onOpenSettings
+  onOpenSettings,
+  onQuickAction
 }) => {
   return (
     <div className="w-64 h-full flex flex-col bg-[#0d1117] border-r border-[#30363d] select-none">
@@ -53,6 +56,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <FolderPlus className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {/* Quick Navigation Hub */}
+      <SidebarQuickNav onAction={onQuickAction} />
 
       {/* Workspace & Sessions List */}
       <div className="flex-1 overflow-y-auto p-2">

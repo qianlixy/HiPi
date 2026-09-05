@@ -4,6 +4,7 @@ import { Header } from './components/header/Header'
 import { ChatArea } from './components/chat/ChatArea'
 import { SettingsModal } from './components/settings/SettingsModal'
 import { ConfirmDialog } from './components/common/ConfirmDialog'
+import { Toast } from './components/common/Toast'
 import {
   Workspace,
   SessionSummary,
@@ -29,6 +30,7 @@ export const App: React.FC = () => {
   const [sessionPendingDelete, setSessionPendingDelete] = useState<SessionSummary | null>(null)
   const [currentModel, setCurrentModel] = useState<{ provider: string; modelId: string } | undefined>(undefined)
   const [thinkingLevel, setThinkingLevel] = useState<string>('off')
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   const currentKey = activeSessionId || (activeWorkspace ? `${activeWorkspace.path}::__default__` : '')
   const currentMessages = (currentKey && messagesMap[currentKey]) || []
@@ -608,6 +610,10 @@ export const App: React.FC = () => {
     }
   }
 
+  const handleQuickAction = (_actionId: string, _label: string) => {
+    setToastMessage('敬请期待')
+  }
+
   const selectWorkspace = async (ws: Workspace) => {
     setActiveWorkspace(ws)
     // Save to settings
@@ -653,6 +659,7 @@ export const App: React.FC = () => {
         onDeleteSession={handleRequestDeleteSession}
         onRemoveWorkspace={handleRemoveWorkspace}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onQuickAction={handleQuickAction}
       />
 
       {/* Main Chat Area */}
@@ -713,6 +720,9 @@ export const App: React.FC = () => {
         onConfirm={handleConfirmDeleteSession}
         onCancel={handleCancelDeleteSession}
       />
+
+      {/* Toast Notification */}
+      <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
     </div>
   )
 }
