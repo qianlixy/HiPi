@@ -1,9 +1,28 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { ipcMain, dialog, BrowserWindow, shell } from 'electron'
 import { PiRuntimeManager } from '../runtime/pi-runtime'
 import { AgentSessionManager } from '../sdk/agent-session-manager'
 import { SessionScanner } from '../session/session-scanner'
 import { SettingsStore } from '../store'
 import path from 'path'
+
+export const SAFE_PROTOCOLS = new Set(['http:', 'https:', 'mailto:'])
+
+export async function safeOpenExternal(rawUrl: string): Promise<boolean> {
+  if (!rawUrl || typeof rawUrl !== 'string') {
+    return false
+  }
+  try {
+    const parsed = new URL(rawUrl)
+    if (!SAFE_PROTOCOLS.has(parsed.protocol)) {
+      console.warn(`[Security] Blocked disallowed protocol: ${rawUrl}`)
+      return false
+    }
+    await shell.openExternal(rawUrl)
+    return true
+  } catch {
+    return false
+  }
+}
 
 export function registerIpcHandlers(
   getMainWindow: () => BrowserWindow | null,
@@ -206,5 +225,10 @@ export function registerIpcHandlers(
     const updated = settingsStore.saveSettings(newSettings)
     await sessionManager.syncSettings(updated)
     return updated
+  })
+
+  // --- System & Shell Handlers ---
+  ipcMain.handle('system:open-external', async (_, url: string) => {
+    return safeOpenExternal(url)
   })
 }
