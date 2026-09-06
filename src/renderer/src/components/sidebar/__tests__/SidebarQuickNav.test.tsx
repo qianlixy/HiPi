@@ -4,10 +4,10 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { SidebarQuickNav, getQuickNavItems } from '../SidebarQuickNav'
 
 describe('SidebarQuickNav Component', () => {
-  it('renders quick action buttons: 新建会话 and 任务列表', () => {
+  it('renders quick action buttons: 新建会话 and 任务看板', () => {
     const html = renderToStaticMarkup(<SidebarQuickNav onAction={() => {}} />)
     expect(html).toContain('新建会话')
-    expect(html).toContain('任务列表')
+    expect(html).toContain('任务看板')
   })
 
   it('renders the shortcut tag ⌘N for new session', () => {
@@ -39,9 +39,16 @@ describe('SidebarQuickNav Component', () => {
     const taskListItem = items.find((i) => i.id === 'task-list')
 
     expect(taskListItem).toBeDefined()
-    expect(taskListItem?.label).toBe('任务列表')
+    expect(taskListItem?.label).toBe('任务看板')
 
     taskListItem?.onClick()
-    expect(handleAction).toHaveBeenCalledWith('task-list', '任务列表')
+    expect(handleAction).toHaveBeenCalledWith('task-list', '任务看板')
+  })
+
+  it('highlights task-list button when activeView is tasks', () => {
+    const html = renderToStaticMarkup(
+      <SidebarQuickNav activeView="tasks" onAction={() => {}} onSelectView={() => {}} />
+    )
+    expect(html).toContain('bg-blue-600/20')
   })
 })

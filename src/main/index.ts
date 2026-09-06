@@ -5,11 +5,13 @@ import { PiRuntimeManager } from './runtime/pi-runtime'
 import { AgentSessionManager } from './sdk/agent-session-manager'
 import { SessionScanner } from './session/session-scanner'
 import { SettingsStore } from './store'
+import { TaskStore } from './tasks/task-store'
 import { registerIpcHandlers, safeOpenExternal } from './ipc/register-handlers'
 
 let mainWindow: BrowserWindow | null = null
 
 const settingsStore = new SettingsStore()
+const taskStore = new TaskStore()
 const runtimeManager = new PiRuntimeManager()
 const sessionManager = new AgentSessionManager()
 const sessionScanner = new SessionScanner()
@@ -160,7 +162,8 @@ app.whenReady().then(async () => {
     runtimeManager,
     sessionManager,
     sessionScanner,
-    settingsStore
+    settingsStore,
+    taskStore
   )
 
   createWindow()

@@ -11,11 +11,14 @@ export interface QuickNavItem {
 }
 
 export interface SidebarQuickNavProps {
+  activeView?: 'chat' | 'tasks'
   onAction?: (actionId: string, label: string) => void
+  onSelectView?: (view: 'chat' | 'tasks') => void
 }
 
 export function getQuickNavItems(
-  onAction?: (actionId: string, label: string) => void
+  onAction?: (actionId: string, label: string) => void,
+  onSelectView?: (view: 'chat' | 'tasks') => void
 ): QuickNavItem[] {
   return [
     {
@@ -23,19 +26,29 @@ export function getQuickNavItems(
       label: '新建会话',
       icon: MessageSquarePlus,
       shortcut: '⌘N',
-      onClick: () => onAction?.('new-session', '新建会话')
+      onClick: () => {
+        onSelectView?.('chat')
+        onAction?.('new-session', '新建会话')
+      }
     },
     {
       id: 'task-list',
-      label: '任务列表',
+      label: '任务看板',
       icon: ListTodo,
-      onClick: () => onAction?.('task-list', '任务列表')
+      onClick: () => {
+        onSelectView?.('tasks')
+        onAction?.('task-list', '任务看板')
+      }
     }
   ]
 }
 
-export const SidebarQuickNav: React.FC<SidebarQuickNavProps> = ({ onAction }) => {
-  const items = getQuickNavItems(onAction)
+export const SidebarQuickNav: React.FC<SidebarQuickNavProps> = ({
+  activeView = 'chat',
+  onAction,
+  onSelectView
+}) => {
+  const items = getQuickNavItems(onAction, onSelectView)
 
   return (
     <div className="flex-shrink-0 px-2 pt-2.5 pb-1 select-none">
@@ -44,24 +57,31 @@ export const SidebarQuickNav: React.FC<SidebarQuickNavProps> = ({ onAction }) =>
         {items.map((item) => {
           const Icon = item.icon
           const isPrimary = item.id === 'new-session'
+          const isTasksActive = item.id === 'task-list' && activeView === 'tasks'
+
+          let buttonClasses = 'hover:bg-[#21262d] text-gray-300 hover:text-white'
+          if (isTasksActive) {
+            buttonClasses = 'bg-blue-600/20 text-blue-300 border border-blue-500/40'
+          } else if (isPrimary) {
+            buttonClasses =
+              'bg-[#21262d]/60 hover:bg-[#21262d] text-gray-200 border border-[#30363d]/60 hover:border-[#30363d]'
+          }
+
+          let iconClasses = 'text-gray-400 group-hover:text-gray-300'
+          if (isTasksActive) {
+            iconClasses = 'text-blue-400'
+          } else if (isPrimary) {
+            iconClasses = 'text-blue-400 group-hover:text-blue-300'
+          }
+
           return (
             <button
               key={item.id}
               onClick={item.onClick}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium transition-all group ${
-                isPrimary
-                  ? 'bg-[#21262d]/60 hover:bg-[#21262d] text-gray-200 border border-[#30363d]/60 hover:border-[#30363d]'
-                  : 'hover:bg-[#21262d] text-gray-300 hover:text-white'
-              }`}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium transition-all group ${buttonClasses}`}
             >
               <div className="flex items-center space-x-2 truncate">
-                <Icon
-                  className={`w-4 h-4 flex-shrink-0 transition-colors ${
-                    isPrimary
-                      ? 'text-blue-400 group-hover:text-blue-300'
-                      : 'text-gray-400 group-hover:text-gray-300'
-                  }`}
-                />
+                <Icon className={`w-4 h-4 flex-shrink-0 transition-colors ${iconClasses}`} />
                 <span className="truncate">{item.label}</span>
               </div>
 

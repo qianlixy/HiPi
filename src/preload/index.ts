@@ -7,7 +7,11 @@ import {
   ChatMessage,
   PiEventPayload,
   PiStderrPayload,
-  PiExitPayload
+  PiExitPayload,
+  TaskItem,
+  CreateTaskInput,
+  UpdateTaskInput,
+  TaskStatus
 } from '../main/types'
 
 const hipiApi = {
@@ -127,6 +131,16 @@ const hipiApi = {
   system: {
     openExternal: (url: string): Promise<boolean> =>
       ipcRenderer.invoke('system:open-external', url)
+  },
+
+  tasks: {
+    list: (): Promise<TaskItem[]> => ipcRenderer.invoke('tasks:list'),
+    create: (input: CreateTaskInput): Promise<TaskItem> => ipcRenderer.invoke('tasks:create', input),
+    update: (id: string, updates: UpdateTaskInput): Promise<TaskItem | null> =>
+      ipcRenderer.invoke('tasks:update', { id, updates }),
+    delete: (id: string): Promise<boolean> => ipcRenderer.invoke('tasks:delete', id),
+    move: (id: string, status: TaskStatus, newIndex?: number): Promise<TaskItem | null> =>
+      ipcRenderer.invoke('tasks:move', { id, status, newIndex })
   }
 }
 

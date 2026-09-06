@@ -9,6 +9,7 @@ interface SidebarProps {
   activeWorkspace?: Workspace
   sessions: SessionSummary[]
   activeSessionId?: string
+  activeView?: 'chat' | 'tasks'
   streamingMap?: Record<string, boolean>
   runtimeStatus: PiRuntimeStatus | null
   onOpenFolderDialog: () => void
@@ -19,6 +20,7 @@ interface SidebarProps {
   onRemoveWorkspace: (ws: Workspace) => void
   onOpenSettings: () => void
   onQuickAction?: (actionId: string, label: string) => void
+  onSelectView?: (view: 'chat' | 'tasks') => void
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -26,6 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeWorkspace,
   sessions,
   activeSessionId,
+  activeView = 'chat',
   streamingMap,
   runtimeStatus,
   onOpenFolderDialog,
@@ -35,7 +38,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onDeleteSession,
   onRemoveWorkspace,
   onOpenSettings,
-  onQuickAction
+  onQuickAction,
+  onSelectView
 }) => {
   return (
     <div className="w-64 h-full flex flex-col bg-[#0d1117] border-r border-[#30363d] select-none">
@@ -58,7 +62,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Quick Navigation Hub */}
-      <SidebarQuickNav onAction={onQuickAction} />
+      <SidebarQuickNav
+        activeView={activeView}
+        onAction={onQuickAction}
+        onSelectView={onSelectView}
+      />
 
       {/* Workspace & Sessions List */}
       <div className="flex-1 overflow-y-auto p-2">
@@ -85,11 +93,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 workspace={ws}
                 isActive={activeWorkspace?.path === ws.path}
                 sessions={wsSessions}
-                activeSessionId={activeSessionId}
+                activeSessionId={activeView === 'tasks' ? undefined : activeSessionId}
                 streamingMap={streamingMap}
                 onSelectWorkspace={onSelectWorkspace}
-                onSelectSession={onSelectSession}
-                onNewSession={onNewSession}
+                onSelectSession={(w, s) => {
+                  onSelectView?.('chat')
+                  onSelectSession(w, s)
+                }}
+                onNewSession={(w) => {
+                  onSelectView?.('chat')
+                  onNewSession(w)
+                }}
                 onDeleteSession={onDeleteSession}
                 onRemoveWorkspace={onRemoveWorkspace}
               />
