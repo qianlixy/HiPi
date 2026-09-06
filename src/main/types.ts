@@ -97,3 +97,5 @@ export interface PiExitPayload {
   signal: string | null
 }
 
+export * from './tasks/types'
+
