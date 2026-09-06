@@ -19,6 +19,7 @@ export const App: React.FC = () => {
   const [activeWorkspace, setActiveWorkspace] = useState<Workspace | undefined>(undefined)
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>(undefined)
+  const [activeView, setActiveView] = useState<'chat' | 'tasks'>('chat')
 
   // Pooled State
   const [messagesMap, setMessagesMap] = useState<Record<string, ChatMessage[]>>({})
@@ -650,16 +651,24 @@ export const App: React.FC = () => {
         activeWorkspace={activeWorkspace}
         sessions={sessions}
         activeSessionId={activeSessionId}
+        activeView={activeView}
         streamingMap={streamingMap}
         runtimeStatus={runtimeStatus}
         onOpenFolderDialog={handleOpenFolderDialog}
         onSelectWorkspace={selectWorkspace}
-        onSelectSession={handleSelectSession}
-        onNewSession={handleNewSession}
+        onSelectSession={(ws, s) => {
+          setActiveView('chat')
+          handleSelectSession(ws, s)
+        }}
+        onNewSession={(ws) => {
+          setActiveView('chat')
+          handleNewSession(ws)
+        }}
         onDeleteSession={handleRequestDeleteSession}
         onRemoveWorkspace={handleRemoveWorkspace}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onQuickAction={handleQuickAction}
+        onSelectView={setActiveView}
       />
 
       {/* Main Chat Area */}

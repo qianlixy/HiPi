@@ -20,7 +20,7 @@ describe('Sidebar Component with QuickNav', () => {
   it('renders quick nav entries in sidebar', () => {
     const html = renderToStaticMarkup(<Sidebar {...defaultProps} />)
     expect(html).toContain('新建会话')
-    expect(html).toContain('任务列表')
+    expect(html).toContain('任务看板')
     expect(html).toContain('⌘N')
     expect(html).toContain('工作空间')
   })
