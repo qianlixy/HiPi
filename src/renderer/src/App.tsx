@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Sidebar } from './components/sidebar/Sidebar'
 import { Header } from './components/header/Header'
 import { ChatArea } from './components/chat/ChatArea'
+import { TaskManagerPanel } from './components/tasks/TaskManagerPanel'
 import { SettingsModal } from './components/settings/SettingsModal'
 import { ConfirmDialog } from './components/common/ConfirmDialog'
 import { Toast } from './components/common/Toast'
@@ -671,27 +672,34 @@ export const App: React.FC = () => {
         onSelectView={setActiveView}
       />
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col h-full min-w-0 bg-[#0d1117]">
-        <Header
+      {/* Main Viewport Area */}
+      {activeView === 'tasks' ? (
+        <TaskManagerPanel
+          workspaces={workspaces}
           activeWorkspace={activeWorkspace}
-          currentModel={currentModel}
-          thinkingLevel={thinkingLevel}
-          sessionStats={sessionStats}
-          onModelChange={handleModelChange}
-          onThinkingLevelChange={handleThinkingLevelChange}
-          onNewSession={() => handleNewSession()}
         />
+      ) : (
+        <div className="flex-1 flex flex-col h-full min-w-0 bg-[#0d1117]">
+          <Header
+            activeWorkspace={activeWorkspace}
+            currentModel={currentModel}
+            thinkingLevel={thinkingLevel}
+            sessionStats={sessionStats}
+            onModelChange={handleModelChange}
+            onThinkingLevelChange={handleThinkingLevelChange}
+            onNewSession={() => handleNewSession()}
+          />
 
-        <ChatArea
-          workspace={activeWorkspace}
-          messages={currentMessages}
-          isStreaming={isStreaming}
-          onSendMessage={handleSendPrompt}
-          onAbort={handleAbort}
-          onOpenFolderDialog={handleOpenFolderDialog}
-        />
-      </div>
+          <ChatArea
+            workspace={activeWorkspace}
+            messages={currentMessages}
+            isStreaming={isStreaming}
+            onSendMessage={handleSendPrompt}
+            onAbort={handleAbort}
+            onOpenFolderDialog={handleOpenFolderDialog}
+          />
+        </div>
+      )}
 
       {/* Settings Modal */}
       <SettingsModal
