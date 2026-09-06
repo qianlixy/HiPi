@@ -3,6 +3,8 @@ import { PiRuntimeManager } from '../runtime/pi-runtime'
 import { AgentSessionManager } from '../sdk/agent-session-manager'
 import { SessionScanner } from '../session/session-scanner'
 import { SettingsStore } from '../store'
+import { TaskStore } from '../tasks/task-store'
+import { CreateTaskInput, UpdateTaskInput, TaskStatus } from '../tasks/types'
 import path from 'path'
 
 export const SAFE_PROTOCOLS = new Set(['http:', 'https:', 'mailto:'])
@@ -29,7 +31,8 @@ export function registerIpcHandlers(
   runtimeManager: PiRuntimeManager,
   sessionManager: AgentSessionManager,
   sessionScanner: SessionScanner,
-  settingsStore: SettingsStore
+  settingsStore: SettingsStore,
+  taskStore: TaskStore = new TaskStore()
 ) {
   // Listen to session manager events and forward to renderer
   sessionManager.onEvent(({ workspacePath, sessionId, event }) => {
@@ -230,5 +233,26 @@ export function registerIpcHandlers(
   // --- System & Shell Handlers ---
   ipcMain.handle('system:open-external', async (_, url: string) => {
     return safeOpenExternal(url)
+  })
+
+  // --- Tasks Management ---
+  ipcMain.handle('tasks:list', async () => {
+    return taskStore.list()
+  })
+
+  ipcMain.handle('tasks:create', async (_, input: CreateTaskInput) => {
+    return taskStore.create(input)
+  })
+
+  ipcMain.handle('tasks:update', async (_, payload: { id: string; updates: UpdateTaskInput }) => {
+    return taskStore.update(payload.id, payload.updates)
+  })
+
+  ipcMain.handle('tasks:delete', async (_, id: string) => {
+    return taskStore.delete(id)
+  })
+
+  ipcMain.handle('tasks:move', async (_, payload: { id: string; status: TaskStatus; newIndex?: number }) => {
+    return taskStore.move(payload.id, payload.status, payload.newIndex)
   })
 }
