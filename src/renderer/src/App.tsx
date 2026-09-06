@@ -612,7 +612,10 @@ export const App: React.FC = () => {
     }
   }
 
-  const handleQuickAction = (_actionId: string, _label: string) => {
+  const handleQuickAction = (actionId: string, _label: string) => {
+    if (actionId === 'task-list' || actionId === 'new-session') {
+      return
+    }
     setToastMessage('敬请期待')
   }
 
