@@ -2,7 +2,7 @@ import React from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { TaskCard } from '../TaskCard'
-import { TaskItem } from '../../types'
+import { TaskItem } from '../../../types'
 
 describe('TaskCard component', () => {
   const sampleTask: TaskItem = {
